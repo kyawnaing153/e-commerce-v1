@@ -13,34 +13,45 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libzip-dev \
-    default-mysql-client
+    default-mysql-client \
+    libicu-dev \
+    && docker-php-ext-configure intl \
+    && docker-php-ext-install intl
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
-RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip intl
+RUN docker-php-ext-install \
+    pdo_mysql \
+    mbstring \
+    exif \
+    pcntl \
+    bcmath \
+    gd \
+    zip \
+    intl
 
 # Get latest Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy existing application directory contents
-COPY . /var/www
+# Copy application
+COPY . .
 
-# Copy existing application directory permissions
-COPY --chown=www-data:www-data . /var/www
+# Set proper permissions
+RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
 
-# Change current user to www-data
+# Switch to www-data user
 USER www-data
 
-# Install dependencies (no-dev for production)
-RUN composer install --no-dev --optimize-autoloader
+# Install dependencies
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
 # Optimize Laravel
-RUN php artisan config:cache
-RUN php artisan route:cache
+RUN php artisan config:cache && \
+    php artisan route:cache && \
+    php artisan view:cache
 
-# Expose port 8000
 EXPOSE 8000
 
 CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
