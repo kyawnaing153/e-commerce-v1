@@ -14,7 +14,9 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     libpng-dev \
-    libwebp-dev
+    libwebp-dev \
+    # FIX: Add the libsodium development package here
+    **libsodium-dev**
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
