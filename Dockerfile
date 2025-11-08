@@ -1,8 +1,5 @@
 FROM php:8.2-fpm
 
-# Set working directory
-WORKDIR /var/www
-
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
     git \
@@ -13,45 +10,44 @@ RUN apt-get update && apt-get install -y \
     zip \
     unzip \
     libzip-dev \
-    default-mysql-client \
     libicu-dev \
-    && docker-php-ext-configure intl \
-    && docker-php-ext-install intl
+    libfreetype6-dev \
+    libjpeg62-turbo-dev \
+    libpng-dev \
+    libwebp-dev
 
 # Clear cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Install PHP extensions
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp
 RUN docker-php-ext-install \
-    pdo_mysql \
-    mbstring \
-    exif \
-    pcntl \
     bcmath \
+    exif \
     gd \
-    zip \
-    intl
+    intl \
+    mysqli \
+    opcache \
+    pcntl \
+    pdo_mysql \
+    sodium \
+    zip
 
-# Get latest Composer
+# Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-# Copy application
+# Set working directory
+WORKDIR /var/www
+
+# Copy existing application directory contents
 COPY . .
 
-# Set proper permissions
-RUN chown -R www-data:www-data /var/www/storage /var/www/bootstrap/cache
+# Copy existing application directory permissions
+COPY --chown=www-data:www-data . /var/www
 
-# Switch to www-data user
+# Change current user to www-data
 USER www-data
 
-# Install dependencies
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
-
-# Optimize Laravel
-RUN php artisan config:cache && \
-    php artisan route:cache && \
-    php artisan view:cache
-
-EXPOSE 8000
-
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+# Expose port 9000 and start php-fpm server
+EXPOSE 9000
+CMD ["php-fpm"]
